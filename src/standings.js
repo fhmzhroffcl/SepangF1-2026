@@ -33,7 +33,7 @@ export const TEAM_COLORS={mercedes:'#00d2be',ferrari:'#ff1e32',mclaren:'#ff8700'
 export function driversFromApi(json){
  const list=json?.MRData?.StandingsTable?.StandingsLists?.[0];
  if(!list?.DriverStandings?.length)throw new Error('Standings response was empty.');
- return {round:list.round,rows:list.DriverStandings.map(s=>{const d=s.Driver,c=s.Constructors.at(-1);return {position:s.position,number:d.permanentNumber||'—',code:d.code,given:d.givenName,family:d.familyName,nationality:d.nationality,teamId:c.constructorId,team:c.name,points:s.points,wins:s.wins};})};
+ return {round:list.round,rows:list.DriverStandings.map(s=>{const d=s.Driver,c=s.Constructors.at(-1);return {id:d.driverId,born:d.dateOfBirth,position:s.position,number:d.permanentNumber||'—',code:d.code,given:d.givenName,family:d.familyName,nationality:d.nationality,teamId:c?.constructorId,team:c?.name||'Not supplied',points:s.points,wins:s.wins};})};
 }
 export function constructorsFromApi(json){
  const list=json?.MRData?.StandingsTable?.StandingsLists?.[0];
