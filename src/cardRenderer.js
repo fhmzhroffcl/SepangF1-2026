@@ -11,7 +11,6 @@ function type(ctx,value,x,y,size,max,color='#f4f7fb',weight=700){
  ctx.fillText(value,x,y);
 }
 function glow(ctx,x,y,r,color){const g=ctx.createRadialGradient(x,y,0,x,y,r);g.addColorStop(0,color);g.addColorStop(1,'transparent');ctx.fillStyle=g;ctx.fillRect(36,36,1008,1278);}
-function serial(s){let n=2166136261;for(const c of s)n=Math.imul(n^c.charCodeAt(0),16777619);return (n>>>0).toString(16).toUpperCase().padStart(8,'0');}
 export function cardInitials(name){return Array.from(name.trim().split(/\s+/).filter(Boolean).map(x=>Array.from(x)[0]).join('')).slice(0,2).join('').toUpperCase()||'S';}
 
 // Shared by the live preview, high-resolution PNG and every frame of the GIF.
@@ -80,7 +79,7 @@ export function drawCard(ctx,settings,phase=0,photo=null){
   type(ctx,'5.543 KM    /    15 TURNS    /    56 LAPS',89,1150,25,900,'#d6e4f5');
  }
  type(ctx,'SEPANG INTERNATIONAL CIRCUIT',65,1240,22,680,'#c6d6e9');
- type(ctx,'FAN-'+serial(name+teamName+driver.code+mode),690,1240,20,320,'#aac1df');
+ type(ctx,settings.serial||'',65,1263,18,945,'#aac1df');
  type(ctx,'INDEPENDENT FAN EDITION',65,1283,17,550,'#92a9c8');
  type(ctx,'sepang-f1.vercel.app',690,1283,18,320,'#92a9c8');
  ctx.restore();
