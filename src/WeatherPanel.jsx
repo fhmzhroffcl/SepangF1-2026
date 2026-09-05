@@ -1,5 +1,6 @@
 import React,{useState} from 'react';
 import {CloudLightning,CloudRain,CloudSun,RefreshCw} from 'lucide-react';
+import AIBriefing from './AIBriefing';
 import useFeed from './useFeed';
 import {FORECAST,WARNINGS,forecastRows,activeWarnings,describe,timeMY,dateMY} from './data';
 const iconFor=s=>/ribut|thunder/i.test(s||'')?CloudLightning:/hujan|rain/i.test(s||'')?CloudRain:CloudSun;
@@ -11,7 +12,7 @@ export default function WeatherPanel(){
   <div className="panel-title"><b>SEPANG WEATHER</b><span>MET MALAYSIA</span></div>
   <div className="weather-update"><button aria-label="Refresh weather" onClick={()=>{feed.refresh();warnings.refresh();}} disabled={feed.loading}><RefreshCw size={17}/></button>{feed.loading?'Updating…':feed.retrieved?'Checked '+timeMY(feed.retrieved)+' MYT':'Update unavailable'}</div>
   {row?<><div className="weather-range">{row.min_temp}°—{row.max_temp}°C</div><div className="weather-main"><Icon/><div><strong>{describe(row.summary_forecast)}</strong><small>{new Date(row.date+'T12:00:00+08:00').toLocaleDateString('en-GB',{timeZone:'Asia/Kuala_Lumpur',weekday:'long',day:'numeric',month:'short'})}</small></div></div>
-   <div className="forecast-strip" aria-label="Forecast day">{feed.rows.slice(0,7).map(r=><button aria-pressed={r.date===row.date} className={r.date===row.date?'active':''} key={r.date} onClick={()=>setSelectedDate(r.date)}><span>{new Date(r.date+'T12:00:00+08:00').toLocaleDateString('en-GB',{timeZone:'Asia/Kuala_Lumpur',weekday:'short'})}</span><b>{r.max_temp}°</b></button>)}</div>
+   <AIBriefing date={row.date} auto/><div className="forecast-strip" aria-label="Forecast day">{feed.rows.slice(0,7).map(r=><button aria-pressed={r.date===row.date} className={r.date===row.date?'active':''} key={r.date} onClick={()=>setSelectedDate(r.date)}><span>{new Date(r.date+'T12:00:00+08:00').toLocaleDateString('en-GB',{timeZone:'Asia/Kuala_Lumpur',weekday:'short'})}</span><b>{r.max_temp}°</b></button>)}</div>
    <div className="weather-periods">{[['Morning','morning_forecast'],['Afternoon','afternoon_forecast'],['Night','night_forecast']].map(([label,k])=>{const I=iconFor(row[k]);return <div key={k}><span>{label}</span><I size={24}/><small>{describe(row[k])}</small></div>;})}</div>
   </>:<div className="weather-empty">{feed.loading?'Loading forecast…':feed.error||'No upcoming forecast published.'}</div>}
   {feed.error&&row&&<p className="feed-error">Saved forecast · {feed.error}</p>}

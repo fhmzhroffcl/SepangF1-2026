@@ -1,5 +1,5 @@
 import {drawCard} from './cardRenderer';
-export const GIF_INFO={width:600,height:750,frames:50,duration:4};
+export const GIF_INFO={width:600,height:750,frames:100,duration:4};
 export async function exportGif(settings,photo,onProgress,signal){
  if(signal?.aborted)throw new DOMException('Cancelled','AbortError');
  const worker=new Worker(new URL('./gif.worker.js',import.meta.url),{type:'module'});

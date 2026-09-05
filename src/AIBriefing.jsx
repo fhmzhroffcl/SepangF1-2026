@@ -1,0 +1,6 @@
+import React,{useEffect,useState} from 'react';
+export default function AIBriefing({date='',topic='weather',auto=false}){
+ const [state,setState]=useState({}),[attempt,setAttempt]=useState(auto?1:0);
+ useEffect(()=>{if(!attempt)return;const controller=new AbortController();setState({loading:true});fetch(`/api/briefing?topic=${topic}&date=${date}`,{signal:controller.signal}).then(async r=>{const j=await r.json();if(!r.ok)throw Error(j.error||'Briefing unavailable');return j;}).then(j=>setState(j)).catch(e=>{if(e.name!=='AbortError')setState({error:e.message});});return()=>controller.abort();},[date,topic,attempt]);
+ return <div className="ai-briefing"><strong>{topic==='weather'?'Your weather briefing':'AI race companion'}</strong>{state.loading?<p role="status">Reading the latest MET forecast…</p>:state.text?<><p style={{whiteSpace:'pre-line'}}>{state.text}</p><small>AI summary · forecast {state.date} · {state.source}</small></>:state.error?<p role="status">{state.error}</p>:<p>A short explanation grounded in the published forecast and circuit facts.</p>}<button disabled={state.loading} onClick={()=>setAttempt(n=>n+1)}>{state.text?'Refresh briefing':state.error?'Retry briefing':'Get briefing'}</button></div>;
+}

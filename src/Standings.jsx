@@ -34,7 +34,7 @@ export default function Standings({onDrivers}){
   const r=latest?.Results.find(r=>r.Driver.code===d.code);
   return r?{...d,id:r.Driver.driverId,born:r.Driver.dateOfBirth,number:r.number,teamId:r.Constructor.constructorId,team:r.Constructor.name}:d;
  }),[rawDrivers,latest]);
- useEffect(()=>{onDrivers?.(drivers);},[drivers,onDrivers]);
+ useEffect(()=>{onDrivers?.(latest?drivers.filter(d=>latest.Results.some(r=>r.Driver.code===d.code)):drivers);},[drivers,latest,onDrivers]);
  const round=df.rows[0]?.round||SNAPSHOT.round,leader=drivers[0],active=drivers.find(d=>d.code===selected)||leader;
  const team=TEAMS[active.teamId],picked=drivers.filter(d=>followed.includes(d.code));
  const toggle=code=>setFollowed(prev=>prev.includes(code)?prev.filter(x=>x!==code):[...prev,code]);
