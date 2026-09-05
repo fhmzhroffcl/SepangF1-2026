@@ -2,6 +2,7 @@ export const OFFICIAL='https://www.formula1.com/en/racing/2026/bahrain';
 export const CIRCUIT='https://www.sepangcircuit.com/home';
 export const ANNOUNCEMENT='https://www.formula1.com/en/latest/article/formula-1-and-fia-confirm-malaysia-will-join-2026-calendar-as-host-venue-for-bahrain-grand-prix.6lL7vjFEM2VVynRHvg1TCf';
 export const TICKETS='https://www.formula1.com/en/latest/article/tickets-launched-for-2026-bahrain-grand-prix-in-malaysia.6ZRHjZRSy27CeInt4lgGax';
+export const TRACK_IMAGE='https://media.formula1.com/image/upload/c_fit,h_704/q_auto/v1740000001/common/f1/2026/track/2026trackkualalumpurdetailed.webp';
 export const VERIFIED='2026-09-05';
 // UTC times verified against the official F1 event page's JSON-LD and +08:00 session data.
 export const sessions=[
