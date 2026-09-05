@@ -1,79 +1,92 @@
-import React,{useEffect,useRef,useState} from 'react';
+import React,{useEffect,useMemo,useRef,useState} from 'react';
 import {Download,Share2,BookmarkCheck} from 'lucide-react';
 import {SNAPSHOT,TEAM_COLORS} from './standings';
 import {TEAMS} from './teams';
 import useSaved from './useSaved';
+import {drawCard,FINISHES} from './cardRenderer';
+import useDriverPhoto from './useDriverPhoto';
+import './fanCards.css';
 
 const modes={going:"I'm Going",online:'Watching Online',prediction:'My Prediction'};
 const titles={going:"I'M GOING TO SEPANG",online:"I'M WATCHING ONLINE",prediction:'MY SEPANG PREDICTION'};
 const fields=[['pole','Pole winner'],['p1','Podium P1'],['p2','Podium P2'],['p3','Podium P3'],['fastest','Fastest lap']];
 const empty={pole:'',p1:'',p2:'',p3:'',fastest:'',safety:'',rain:''};
 const teamList=Object.entries(TEAMS).map(([id,t])=>({id,name:t.name,color:TEAM_COLORS[id]}));
-function text(ctx,value,x,y,size,max=952,color='#f1ecdf',weight=700){
- ctx.fillStyle=color;ctx.font=`${weight} ${size}px Arial, sans-serif`;
- while(ctx.measureText(value).width>max&&size>10){size--;ctx.font=`${weight} ${size}px Arial, sans-serif`;}
- ctx.fillText(value,x,y);
-}
 const blobOf=canvas=>new Promise((resolve,reject)=>canvas.toBlob(b=>b?resolve(b):reject(new Error('Could not create the image. Please retry.')),'image/png'));
 
 export default function FanStudio({drivers=SNAPSHOT.drivers}){
- const canvas=useRef(null),[feedback,setFeedback]=useState(''),[busy,setBusy]=useState(false);
+ const canvas=useRef(null),abortRef=useRef(null),[feedback,setFeedback]=useState(''),[busy,setBusy]=useState(false),[progress,setProgress]=useState(0);
+ const [paused,setPaused]=useState(()=>window.matchMedia('(prefers-reduced-motion: reduce)').matches),[retry,setRetry]=useState(0);
+ const [style,setStyle,styleSaved]=useSaved('card-style',{driverCode:'HAM',finish:'prism',photo:true},v=>v&&typeof v.driverCode==='string'&&FINISHES[v.finish]&&typeof v.photo==='boolean');
+ const [collection,setCollection,collectionSaved]=useSaved('card-collection',[],v=>Array.isArray(v)&&v.length<=12&&v.every(c=>c&&typeof c.id==='string'&&c.profile&&TEAMS[c.profile.teamId]&&modes[c.profile.mode]&&typeof c.profile.name==='string'&&c.style&&FINISHES[c.style.finish]&&c.picks));
+ const [editingId,setEditingId]=useState(null);
+ const portrait=useDriverPhoto(style.driverCode,style.photo,retry);
+ useEffect(()=>()=>abortRef.current?.abort(),[]);
  const [profile,setProfile,profileSaved]=useSaved('profile',{name:'',teamId:'ferrari',mode:'going'},v=>v&&typeof v.name==='string'&&TEAMS[v.teamId]&&modes[v.mode]);
  const [prediction,setPrediction,draftSaved]=useSaved('prediction-draft',empty,v=>v&&Object.keys(empty).every(k=>typeof v[k]==='string'));
  const [savedPick,setSavedPick,pickSaved]=useSaved('prediction',null,v=>v&&typeof v.name==='string'&&typeof v.savedAt==='string'&&v.picks);
  const {name,teamId,mode}=profile,team=teamList.find(t=>t.id===teamId);
  const setMode=mode=>{setProfile(p=>({...p,mode}));setFeedback('');};
- const names=Object.fromEntries(drivers.map(d=>[d.code,d.given+' '+d.family]));
+ const names=useMemo(()=>Object.fromEntries(drivers.map(d=>[d.code,d.given+' '+d.family])),[drivers]);
  const allPicked=fields.every(([k])=>names[prediction[k]])&&['yes','no'].includes(prediction.safety)&&['yes','no'].includes(prediction.rain);
  const podium=[prediction.p1,prediction.p2,prediction.p3].filter(Boolean),duplicate=new Set(podium).size!==podium.length;
  const complete=Boolean(name.trim())&&(mode!=='prediction'||allPicked&&!duplicate);
- const initials=Array.from(name.trim().split(/\s+/).filter(Boolean).map(x=>Array.from(x)[0]).join('')).slice(0,2).join('').toUpperCase()||'S';
+ const selectedDriver=drivers.find(d=>d.code===style.driverCode)||SNAPSHOT.drivers.find(d=>d.code===style.driverCode)||drivers[0];
+ const settings=useMemo(()=>({name,teamName:team.name,teamColor:team.color,mode,finish:style.finish,driver:selectedDriver,picks:prediction,names}),[name,team.name,team.color,mode,style.finish,selectedDriver,prediction,names]);
+ const exportReady=complete&&!busy&&(!style.photo||(!portrait.loading&&!!portrait.image));
  useEffect(()=>{
-  const ctx=canvas.current?.getContext('2d');if(!ctx)return;
-  ctx.clearRect(0,0,1080,1350);ctx.fillStyle='#0b0e10';ctx.fillRect(0,0,1080,1350);
-  text(ctx,'SEPANG',64,105,66,400);text(ctx,'26',388,105,66,160,team.color);
-  text(ctx,'02–04 OCT 2026',670,75,25,345);
-  text(ctx,'BAHRAIN GP IN MALAYSIA',670,112,20,345);
-  ctx.fillStyle=team.color;ctx.fillRect(0,154,1080,12);
-  ctx.fillStyle=mode==='online'?'#17202a':mode==='prediction'?'#20221b':'#b31b2d';ctx.fillRect(0,166,1080,570);
-  // Deterministic typography and racing stripes form the personal monogram.
-  const seed=Array.from(name).reduce((n,c)=>n+c.codePointAt(0),0);
-  ctx.globalAlpha=.18;ctx.strokeStyle=team.color;ctx.lineWidth=14;
-  for(let i=0;i<7;i++){ctx.beginPath();ctx.moveTo(-170+i*220+(seed%40),166);ctx.lineTo(80+i*220,736);ctx.stroke();}
-  ctx.globalAlpha=1;ctx.textAlign='center';
-  text(ctx,initials,540,555,300,870);text(ctx,name.trim().toUpperCase()||'YOUR NAME',540,675,62,940);
-  ctx.textAlign='left';text(ctx,titles[mode],64,805,42,952);
-  text(ctx,team.name.toUpperCase()+' SUPPORTER',64,852,25,952,team.color);
-  if(mode==='prediction'){
-   fields.forEach(([key,label],i)=>{text(ctx,label.toUpperCase(),64,912+i*45,20,225,'#aab1b7');text(ctx,names[prediction[key]]||'Choose driver',320,912+i*45,29,690);});
-   text(ctx,'SAFETY CAR: '+(prediction.safety||'—').toUpperCase()+'     RAIN: '+(prediction.rain||'—').toUpperCase(),64,1168,23,952);
-  }else{
-   text(ctx,mode==='going'?'SEE YOU AT SEPANG.':'EVERY LAP. FROM WHEREVER I AM.',64,968,42,952);
-   text(ctx,'5.543 KM  /  15 TURNS  /  56 LAPS',64,1033,26,952,'#aab1b7');
-   text(ctx,'RACE · SUNDAY 4 OCT · 15:00 MYT',64,1110,27,952);
-  }
-  ctx.fillStyle=team.color;ctx.fillRect(64,1210,952,3);
-  text(ctx,'SEPANG INTERNATIONAL CIRCUIT · MALAYSIA',64,1260,22,952);
-  text(ctx,'sepang-f1.vercel.app  ·  Independent fan card',64,1305,19,952,'#aab1b7');
- },[name,teamId,mode,prediction,drivers,initials]);
- const getFile=async()=>new File([await blobOf(canvas.current)],`sepang26-${mode}-${name.trim().toLowerCase().replace(/[^a-z0-9]+/g,'-')||'fan'}.png`,{type:'image/png'});
- const downloadFile=file=>{const url=URL.createObjectURL(file),a=document.createElement('a');a.href=url;a.download=file.name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1500);};
- const exportCard=async share=>{
-  if(!complete||busy)return;setBusy(true);setFeedback('');
-  try{const file=await getFile();if(share&&navigator.share&&navigator.canShare?.({files:[file]})){await navigator.share({title:'My Sepang 26 fan card',files:[file]});setFeedback('Card shared.');}else{downloadFile(file);setFeedback(share?'PNG downloaded. You can attach it in your favourite app.':'PNG downloaded.');}}
-  catch(e){setFeedback(e.name==='AbortError'?'Sharing cancelled. Your card is still saved here.':e.message||'Export failed. Please retry.');}finally{setBusy(false);}
+  const element=canvas.current,ctx=element?.getContext('2d');if(!ctx)return;
+  let raf,visible=true,last=0;
+  const observer=new IntersectionObserver(([entry])=>{visible=entry.isIntersecting;});observer.observe(element);
+  drawCard(ctx,settings,0,portrait.image);
+  const tick=now=>{if(visible&&!document.hidden&&now-last>40){drawCard(ctx,settings,(now%4000)/4000,portrait.image);last=now;}raf=requestAnimationFrame(tick);};
+  if(!paused)raf=requestAnimationFrame(tick);
+  return()=>{cancelAnimationFrame(raf);observer.disconnect();};
+ },[settings,portrait.image,paused]);
+ const downloadFile=file=>{const url=URL.createObjectURL(file),a=document.createElement('a');a.href=url;a.download=file.name;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),60000);};
+ const exportCard=async kind=>{
+  if(!exportReady)return;setBusy(kind);setFeedback('');setProgress(0);
+  try{
+   let blob;
+   if(kind==='gif'){
+    const controller=new AbortController();abortRef.current=controller;
+    const {exportGif}=await import('./exportGif');
+    blob=await exportGif(settings,portrait.image,setProgress,controller.signal);
+   }else{const c=document.createElement('canvas');c.width=1080;c.height=1350;drawCard(c.getContext('2d'),settings,0,portrait.image);blob=await blobOf(c);}
+   const ext=kind==='gif'?'gif':'png',file=new File([blob],`sepang26-${mode}-${name.trim().toLowerCase().replace(/[^a-z0-9]+/g,'-')||'fan'}.${ext}`,{type:blob.type});
+   if(kind==='share'&&navigator.share&&navigator.canShare?.({files:[file]})){await navigator.share({title:'My Sepang fan collectible',files:[file]});setFeedback('Card shared.');}
+   else{downloadFile(file);setFeedback(`${ext.toUpperCase()} downloaded${kind==='gif'?' · 4-second looping collectible':''}.`);}
+  }catch(e){setFeedback(e.name==='AbortError'?'Export cancelled. Your draft is kept.':e.message||'Export failed. Please retry.');}finally{abortRef.current=null;setBusy(false);}
  };
+ const saveCard=()=>{
+  if(!complete)return;
+  if(!editingId&&collection.length>=12){setFeedback('Your collection has 12 cards. Open one to update it, or remove a card first.');return;}
+  const card={id:editingId||crypto.randomUUID(),profile:{...profile},style:{...style},picks:{...prediction},savedAt:new Date().toISOString()};
+  const next=editingId?collection.map(c=>c.id===editingId?card:c):[card,...collection];
+  try{localStorage.setItem('sepang26:v1:card-collection',JSON.stringify(next));setCollection(next);setEditingId(card.id);setFeedback('Card saved to My collection on this browser.');}catch{setFeedback('Browser storage is full or unavailable. Download your card to keep it.');}
+ };
+ const loadCard=c=>{setProfile({...c.profile});setStyle({...c.style});setPrediction({...c.picks});setEditingId(c.id);setFeedback('Saved card opened. Edit it or download it again.');};
  const savePrediction=()=>{if(!complete)return;setSavedPick({name:name.trim(),teamId,picks:{...prediction},names:{...names},savedAt:new Date().toISOString()});setFeedback('Prediction saved on this browser.');};
- return <section id="fan-card" className="fan-studio"><div className="studio-copy"><h2>Make it your weekend.</h2>
+ return <section id="fan-card" className="fan-studio"><div className="studio-copy"><h2>Your race. Your collectible.</h2><p className="card-intro">Pick your driver. Make it personal. Keep the whole card in motion.</p>
   <div className="mode-tabs">{Object.entries(modes).map(([k,v])=><button aria-pressed={mode===k} className={mode===k?'active':''} key={k} onClick={()=>setMode(k)}>{v}</button>)}</div>
-  <div className="studio-form"><label>Your name<input value={name} maxLength={40} placeholder="Your name" onChange={e=>setProfile(p=>({...p,name:e.target.value}))}/><small>Your initials become your card’s monogram.</small></label>
+  <fieldset className="studio-form card-editor" disabled={!!busy}><label>Your name<input value={name} maxLength={40} placeholder="Your name" onChange={e=>setProfile(p=>({...p,name:e.target.value}))}/><small>Your name and a unique monogram, in your team’s colours.</small></label>
    <fieldset><legend>Choose your team</legend><div className="team-picker">{teamList.map(t=><button type="button" aria-pressed={teamId===t.id} className={teamId===t.id?'active':''} key={t.id} onClick={()=>setProfile(p=>({...p,teamId:t.id}))} style={{'--swatch':t.color}}><span/>{t.name}</button>)}</div></fieldset>
+   <div className="prediction-grid"><label>Featured driver<select value={style.driverCode} onChange={e=>setStyle(s=>({...s,driverCode:e.target.value}))}>{drivers.map(d=><option key={d.code} value={d.code}>{d.given} {d.family}</option>)}</select></label><label>Card finish<select value={style.finish} onChange={e=>setStyle(s=>({...s,finish:e.target.value}))}>{Object.entries(FINISHES).map(([k,v])=><option key={k} value={k}>{v}</option>)}</select></label></div>
+   <label className="photo-toggle"><input type="checkbox" checked={style.photo} onChange={e=>setStyle(s=>({...s,photo:e.target.checked}))}/>Include driver portrait</label>
+   {style.photo&&style.driverCode==='TSU'&&<small>Tsunoda’s portrait is from his previous F1 season.</small>}
+   {portrait.loading&&<p role="status">Loading driver portrait…</p>}
+   {portrait.error&&<p className="feed-error" role="alert">{portrait.error} <button onClick={()=>setRetry(r=>r+1)}>Retry photo</button></p>}
    {mode==='prediction'&&<><div className="prediction-grid">{fields.map(([k,label])=><label key={k}>{label}<select value={prediction[k]} onChange={e=>{setPrediction(p=>({...p,[k]:e.target.value}));setFeedback('');}}><option value="">Choose driver</option>{drivers.map(d=><option key={d.code} value={d.code}>{d.given} {d.family}</option>)}</select></label>)}{[['safety','Safety car'],['rain','Rain']].map(([k,label])=><label key={k}>{label}<select value={prediction[k]} onChange={e=>setPrediction(p=>({...p,[k]:e.target.value}))}><option value="">Choose</option><option value="yes">Yes</option><option value="no">No</option></select></label>)}</div>
    {duplicate&&<p className="feed-error" role="alert">Pick three different drivers for the podium.</p>}<button className="outline-action" disabled={!complete} onClick={savePrediction}><BookmarkCheck size={18}/>Save my prediction</button></>}
-   <div className="export-actions"><button disabled={!complete||busy} onClick={()=>exportCard(true)}><Share2/>Share card</button><button className="primary" disabled={!complete||busy} onClick={()=>exportCard(false)}><Download/>{busy?'Preparing…':'Download PNG'}</button></div>
+   <div className="export-actions"><button disabled={!complete} onClick={saveCard}><BookmarkCheck/>{editingId?'Update saved card':'Save to my collection'}</button><button disabled={!exportReady} onClick={()=>exportCard('share')}><Share2/>Share PNG</button><button disabled={!exportReady} onClick={()=>exportCard('png')}><Download/>Download PNG</button><button className="primary" disabled={!exportReady} onClick={()=>exportCard('gif')}><Download/>{busy==='gif'?`Making GIF · ${progress}%`:'Download animated GIF'}</button></div>
+   <small>PNG 1080 × 1350 · GIF 600 × 750 · 4-second loop</small>
    {!complete&&<p className="form-hint">{!name.trim()?'Add your name to unlock your card.':'Complete all picks with a unique podium to save or export.'}</p>}
-   <p className="save-status">{profileSaved&&draftSaved?'Profile and draft saved on this browser.':'Browser storage unavailable. Download your card to keep it.'} No account or cross-device sync.</p>
-   {feedback&&<p className="success" role="status">{feedback}</p>}
+   <p className="save-status">{profileSaved&&draftSaved&&styleSaved&&collectionSaved?'Draft and collection save on this device. Clearing browser data removes them.':'Browser storage unavailable. Download your card to keep it.'} No account or cross-device sync.</p>
+
    {savedPick&&<details className="saved-prediction"><summary>Saved prediction · {new Date(savedPick.savedAt).toLocaleDateString('en-GB',{day:'numeric',month:'short'})}</summary><p>{savedPick.name}’s Sepang picks</p><dl>{fields.map(([k,label])=><div key={k}><dt>{label}</dt><dd>{savedPick.names?.[savedPick.picks[k]]||names[savedPick.picks[k]]||savedPick.picks[k]}</dd></div>)}<div><dt>Safety car / Rain</dt><dd>{savedPick.picks.safety} / {savedPick.picks.rain}</dd></div></dl><p>{pickSaved?'Saved locally.':'Could not persist this prediction.'} Predictions are personal picks, not race results.</p><button className="text-button" onClick={()=>{setPrediction({...savedPick.picks});setProfile({name:savedPick.name,teamId:savedPick.teamId,mode:'prediction'});setFeedback('Saved prediction loaded into the editor.');}}>Load saved picks</button></details>}
-  </div></div><div className="card-preview"><canvas ref={canvas} width="1080" height="1350" role="img" aria-label={`${modes[mode]} fan card for ${name||'your name'}, supporting ${team.name}`}/></div></section>;
+  </fieldset>
+  {busy==='gif'&&<div className="gif-progress" role="status"><progress value={progress} max="100" aria-label="GIF export progress"/><span>Rendering your collectible · {progress}%</span><button onClick={()=>abortRef.current?.abort()}>Cancel export</button></div>}
+  {feedback&&<p className="success" role="status">{feedback}</p>}
+  <div className="card-collection"><h3>My collection <span>{collection.length}/12</span></h3><p>Open a saved design to edit or download it again.</p>{collection.length===0?<p className="form-hint">Your first collectible belongs here. Add your name, then save your card.</p>:<ul>{collection.map(c=><li key={c.id}><span className="collection-monogram" style={{'--card-team':TEAM_COLORS[c.profile.teamId]}}>{c.profile.name.trim().split(/\s+/).map(n=>Array.from(n)[0]).slice(0,2).join('')}</span><div><strong>{c.profile.name}</strong><small>{modes[c.profile.mode]} · {c.style.driverCode} · {FINISHES[c.style.finish]}</small></div><button disabled={!!busy} onClick={()=>loadCard(c)}>Open</button><button disabled={!!busy} aria-label={`Remove ${c.profile.name} ${modes[c.profile.mode]} card`} onClick={()=>{setCollection(cs=>cs.filter(x=>x.id!==c.id));if(editingId===c.id)setEditingId(null);}}>Remove</button></li>)}</ul>}{editingId&&<button disabled={!!busy} onClick={()=>{setEditingId(null);setFeedback('Ready to save this design as a new collectible.');}}>Make a new collectible</button>}</div>
+  </div><div className="card-preview"><canvas ref={canvas} width="648" height="810" role="img" aria-label={`${modes[mode]} fan card for ${name||'your name'}, supporting ${team.name}, featuring ${selectedDriver.given} ${selectedDriver.family}`}/><button className="motion-toggle" onClick={()=>setPaused(p=>!p)}>{paused?'Play card animation':'Pause card animation'}</button><small>Animated foil. Your name and picks stay readable.</small></div></section>;
 }
