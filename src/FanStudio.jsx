@@ -76,7 +76,7 @@ export default function FanStudio({drivers=SNAPSHOT.drivers}){
    const ext=kind==='gif'?'gif':kind==='video'?(blob.type.includes('mp4')?'mp4':'webm'):'png',file=new File([blob],`sepang26-${mode}-${name.trim().toLowerCase().replace(/[^a-z0-9]+/g,'-')||'fan'}.${ext}`,{type:blob.type});
    if(kind==='share'&&navigator.share&&navigator.canShare?.({files:[file]})){await navigator.share({title:'My Sepang fan collectible',files:[file]});setFeedback('Card shared.');}
    else{downloadFile(file);playSound('complete');if(kind==='gif'||kind==='video'){setMedia({url:URL.createObjectURL(blob),type:blob.type});setViewer(true);}setFeedback(`${ext.toUpperCase()} downloaded${kind==='gif'?' · 4-second looping collectible':''}.`);}
-  }catch(e){setFeedback(e.name==='AbortError'?'Export cancelled. Your draft is kept.':e.message||'Export failed. Please retry.');}finally{abortRef.current=null;setBusy(false);}
+  }catch(e){setFeedback(e.name==='AbortError'?'Export cancelled. Your draft is kept.':/dynamically imported|module script|Importing a module/i.test(e.message)?'Download tools need a refresh. Use Refresh app above; your saved cards are kept.':e.message||'Export failed. Please retry.');}finally{abortRef.current=null;setBusy(false);}
  };
  const saveCard=()=>{
   if(!complete)return;

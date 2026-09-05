@@ -93,3 +93,6 @@ Feeds retain previously fetched data on failure and display update errors. Forec
 - [OpenStreetMap](https://www.openstreetmap.org/)
 
 Independent fan project. Not affiliated with Formula 1 or the event organisers. Collectibles and weekend passes are souvenirs, not admission tickets. Official photographs, driver portraits and circuit maps retain their respective owners' rights.
+
+### Deployment-safe downloads
+The build retains the tracked, content-hashed `dist/assets` files so tabs opened before a deployment can still load their GIF, MP4 and PDF tools. Do not delete those files during routine deployments. HTML revalidates on reload. If a module cannot load, the app offers a refresh without clearing local storage.
