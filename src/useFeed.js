@@ -1,5 +1,5 @@
 import {useCallback,useEffect,useRef,useState} from 'react';
-export default function useFeed(url,normalize){
+export default function useFeed(url,normalize,interval=300000){
  const [state,set]=useState({rows:[],loading:true,error:'',retrieved:null});
  const busy=useRef(false),controller=useRef(null);
  const refresh=useCallback(async()=>{
@@ -9,6 +9,6 @@ export default function useFeed(url,normalize){
   catch(e){set(s=>({...s,loading:false,error:e.name==='AbortError'?'Source timed out. Please retry.':e.message}));}
   finally{clearTimeout(timer);busy.current=false;}
  },[url,normalize]);
- useEffect(()=>{refresh();const t=setInterval(()=>{if(!document.hidden)refresh();},300000);const visible=()=>{if(!document.hidden)refresh();};document.addEventListener('visibilitychange',visible);return()=>{clearInterval(t);document.removeEventListener('visibilitychange',visible);controller.current?.abort();};},[refresh]);
+ useEffect(()=>{refresh();const t=setInterval(()=>{if(!document.hidden)refresh();},interval);const visible=()=>{if(!document.hidden)refresh();};document.addEventListener('visibilitychange',visible);return()=>{clearInterval(t);document.removeEventListener('visibilitychange',visible);controller.current?.abort();};},[refresh,interval]);
  return {...state,refresh};
 }
