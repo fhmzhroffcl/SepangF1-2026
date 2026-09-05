@@ -1,0 +1,14 @@
+import React,{useEffect,useState} from 'react';
+import {RefreshCw} from 'lucide-react';
+import {STANDINGS_URL,CONSTRUCTORS_URL,SNAPSHOT,TEAM_COLORS,driversFromApi,constructorsFromApi} from './standings';
+
+export default function Standings({onDrivers}){
+ const [mode,setMode]=useState('drivers'),[drivers,setDrivers]=useState(SNAPSHOT.drivers),[constructors,setConstructors]=useState(SNAPSHOT.constructors),[round,setRound]=useState(SNAPSHOT.round),[status,setStatus]=useState('snapshot'),[expanded,setExpanded]=useState(false);
+ const refresh=async()=>{setStatus('loading');try{const [d,c]=await Promise.all([fetch(STANDINGS_URL),fetch(CONSTRUCTORS_URL)]);if(!d.ok||!c.ok)throw new Error();const [dj,cj]=await Promise.all([d.json(),c.json()]);const dn=driversFromApi(dj),cn=constructorsFromApi(cj);setDrivers(dn.rows);setConstructors(cn.rows);setRound(dn.round);setStatus('live');onDrivers?.(dn.rows);}catch{setStatus('snapshot');onDrivers?.(SNAPSHOT.drivers);}};
+ useEffect(()=>{refresh();const t=setInterval(refresh,1800000);return()=>clearInterval(t);},[]);
+ const rows=mode==='drivers'?drivers:constructors, shown=expanded?rows:rows.slice(0,7);
+ return <section id="grid" className="standings-section"><div className="standings-head"><div><h2>2026 championship</h2><p>{status==='live'?`Live feed · after Round ${round}`:`Fallback snapshot · after Round ${SNAPSHOT.round} · checked ${SNAPSHOT.checked}`}</p></div><div className="standings-actions"><button className={mode==='drivers'?'active':''} onClick={()=>setMode('drivers')}>Drivers</button><button className={mode==='constructors'?'active':''} onClick={()=>setMode('constructors')}>Constructors</button><button aria-label="Refresh standings" onClick={refresh}><RefreshCw size={16}/></button></div></div>
+  <div className="standings-table" role="table" aria-label={`2026 ${mode} standings`}><div className="standings-row header" role="row"><span>POS</span>{mode==='drivers'&&<span>#</span>}<span>{mode==='drivers'?'DRIVER':'TEAM'}</span>{mode==='drivers'&&<span>TEAM</span>}<span>PTS</span><span>WINS</span></div>{shown.map(r=><div className="standings-row" role="row" key={mode==='drivers'?r.code:r.teamId} style={{'--team':TEAM_COLORS[r.teamId]||'#fff'}}><b>{r.position}</b>{mode==='drivers'&&<span>{r.number}</span>}<span className="driver-name">{mode==='drivers'?<><small>{r.given}</small><strong>{r.family}</strong><em>{r.code}</em></>:<strong>{r.team}</strong>}</span>{mode==='drivers'&&<span className="team-name">{r.team}</span>}<strong>{r.points}</strong><span>{r.wins}</span></div>)}</div>
+  <button className="text-button" onClick={()=>setExpanded(v=>!v)}>{expanded?'Show leaders only':`View all ${rows.length}`}</button><p className="source-note">Auto-refreshes every 30 minutes · Jolpica / Ergast-compatible data · verify against Formula 1</p>
+ </section>
+}
