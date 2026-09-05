@@ -1,0 +1,3 @@
+import React,{useId,useState} from 'react';
+import {Info} from 'lucide-react';
+export default function InfoTip({label='Download details',children}){const id=useId(),[open,setOpen]=useState(false);return <span className={'info-tip '+(open?'is-open':'')} onMouseLeave={()=>setOpen(false)}><button type="button" className="info-trigger" aria-label={label} aria-describedby={id} aria-expanded={open} onClick={()=>setOpen(v=>!v)} onBlur={()=>setOpen(false)} onKeyDown={e=>{if(e.key==='Escape')setOpen(false);}}><Info size={17}/></button><span id={id} role="tooltip" className="info-bubble">{children}</span></span>}
