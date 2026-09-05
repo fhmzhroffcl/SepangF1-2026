@@ -2,7 +2,7 @@ import React,{useState} from 'react';
 import {ExternalLink} from 'lucide-react';
 import {OFFICIAL,TRACK_IMAGE} from './data';
 
-// Label centres in the official 1280 × 704 artwork, not the surrounding container.
+// Label centres in the official 1252 × 704 artwork, not the surrounding container.
 const corners=[
  [1,227,310,'Opening right-hander','Braking from the main straight leads into the tight opening sequence.'],
  [2,355,329,'Left-hand switchback','The direction changes immediately after Turn 1.'],
@@ -34,7 +34,7 @@ export default function CircuitExplorer(){
   <div className="circuit-workspace">
    <div className="accurate-track">
     <div className="circuit-art">
-     {failed?<p className="feed-error">Circuit artwork could not load. <a href={OFFICIAL}>Open the official diagram ↗</a></p>:<svg viewBox="190 -24 880 750" role="img" aria-label="Official Sepang circuit: sector 1 pink, sector 2 yellow, sector 3 blue; numbered turns 1 to 15"><image href={TRACK_IMAGE} width="1280" height="704" onError={()=>setFailed(true)}/>{mode==='corners'&&<circle cx={selected.x} cy={selected.y} r="21" fill="none" stroke="#f0263e" strokeWidth="5"/>}</svg>}
+     {failed?<p className="feed-error">Circuit artwork could not load. <a href={OFFICIAL}>Open the official diagram ↗</a></p>:<svg viewBox="190 -24 880 750" role="img" aria-label="Official Sepang circuit: sector 1 pink, sector 2 yellow, sector 3 blue; numbered turns 1 to 15"><image href={TRACK_IMAGE} width="1252" height="704" onError={()=>setFailed(true)}/>{mode==='corners'&&<circle cx={selected.x} cy={selected.y} r="21" fill="none" stroke="#f0263e" strokeWidth="5"/>}</svg>}
     </div>
     {mode==='corners'?<div className="corner-picker" aria-label="Choose a corner">{corners.map(c=><button key={c.n} aria-label={`Turn ${c.n}`} aria-pressed={selected.n===c.n} className={selected.n===c.n?'active':''} onClick={()=>setSelected(c)}>{c.n}</button>)}</div>:<div className="sector-picker">{sectors.map(s=><button key={s.n} aria-pressed={sector===s.n} onClick={()=>setSector(s.n)} className={sector===s.n?'active':''} style={{'--sector':s.color}}><i/>Sector {s.n}<small>Turns {s.turns}</small></button>)}</div>}
    </div>
