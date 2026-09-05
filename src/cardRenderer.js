@@ -1,3 +1,4 @@
+import {drawTicket} from './ticketDrawing';
 export const CARD_WIDTH=1080;
 export const CARD_HEIGHT=1350;
 export const FINISHES={prism:'Prismatic foil',team:'Team glow',chrome:'Midnight chrome'};
@@ -16,12 +17,15 @@ export function cardInitials(name){return Array.from(name.trim().split(/\s+/).fi
 // Shared by the live preview, high-resolution PNG and every frame of the GIF.
 // All movement is periodic over one phase; the foreground never moves.
 export function drawCard(ctx,settings,phase=0,photo=null){
+ if(settings.kind==='pass'||settings.mode==='prediction'){drawTicket(ctx,settings,phase,photo);return;}
  const {name='',teamName,mode='going',finish='prism',driver={},picks={},names={}}=settings;
  const rawColor=settings.teamColor||'#ff263e',teamColor=rawColor.length===4?'#'+[...rawColor.slice(1)].map(c=>c+c).join(''):rawColor;
  const W=ctx.canvas.width,H=ctx.canvas.height,t=phase*TAU;
  ctx.save();ctx.setTransform(W/CARD_WIDTH,0,0,H/CARD_HEIGHT,0,0);
  ctx.clearRect(0,0,CARD_WIDTH,CARD_HEIGHT);ctx.fillStyle='#060910';ctx.fillRect(0,0,1080,1350);
+ const edgeColor=mode==='online'?'#41e6a6':'#ff253f';
  const colours=finish==='team'?[teamColor,'#effaff',teamColor,'#3c478c',teamColor]:finish==='chrome'?['#667da2','#e0f9ff','#8168ac','#1d334a','#c7ddff']:['#54e4ed','#b090ff',teamColor,'#ffe2a4','#54e4ed'];
+ colours.splice(0,colours.length,edgeColor,mode==='online'?'#c7ffe6':'#ffc184',edgeColor,edgeColor,edgeColor);
  const rim=ctx.createConicGradient?ctx.createConicGradient(t,540,675):ctx.createLinearGradient(0,0,1080,1350);
  colours.forEach((c,i)=>rim.addColorStop(i/(colours.length-1),c));ctx.fillStyle=rim;round(ctx,16,16,1048,1318,44);ctx.fill();
  ctx.fillStyle='#0a101c';round(ctx,30,30,1020,1290,32);ctx.fill();

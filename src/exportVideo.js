@@ -1,9 +1,9 @@
 import {drawCard} from './cardRenderer';
+import {Output,BufferTarget,CanvasSource,Mp4OutputFormat,Quality} from 'mediabunny';
 export async function exportVideo(settings,photo,onProgress,signal){
- const type=['video/mp4;codecs=avc1.42E01E','video/mp4','video/webm;codecs=vp9','video/webm'].find(t=>MediaRecorder.isTypeSupported(t));
- if(!type)throw Error('Video export is unavailable in this browser. Use GIF instead.');
- const canvas=document.createElement('canvas');canvas.width=1080;canvas.height=1350;const ctx=canvas.getContext('2d');drawCard(ctx,settings,0,photo);
- const stream=canvas.captureStream(30),recorder=new MediaRecorder(stream,{mimeType:type,videoBitsPerSecond:8000000}),chunks=[];let frame;
- return new Promise((resolve,reject)=>{const cleanup=()=>{cancelAnimationFrame(frame);stream.getTracks().forEach(t=>t.stop());signal?.removeEventListener('abort',abort);};const abort=()=>{if(recorder.state!=='inactive')recorder.stop();cleanup();reject(new DOMException('Cancelled','AbortError'));};signal?.addEventListener('abort',abort,{once:true});if(signal?.aborted){abort();return;}
- recorder.ondataavailable=e=>{if(e.data.size)chunks.push(e.data);};recorder.onerror=()=>{cleanup();reject(Error('Video export failed. Try GIF.'));};recorder.onstop=()=>{cleanup();resolve(new Blob(chunks,{type:type.split(';')[0]}));};recorder.onstart=()=>{const start=performance.now();const tick=now=>{const elapsed=now-start;if(elapsed>=4000){recorder.stop();return;}drawCard(ctx,settings,elapsed/4000,photo);onProgress(Math.round(elapsed/40));frame=requestAnimationFrame(tick);};frame=requestAnimationFrame(tick);};recorder.start();});
+ if(!globalThis.VideoEncoder)throw Error('MP4 export is unavailable in this browser. Download the animated GIF instead.');
+ const canvas=document.createElement('canvas');canvas.width=1080;canvas.height=1350;
+ const ctx=canvas.getContext('2d'),target=new BufferTarget(),output=new Output({format:new Mp4OutputFormat(),target});
+ const source=new CanvasSource(canvas,{codec:'avc',quality:new Quality('high')});output.addVideoTrack(source);
+ try{await output.start();for(let frame=0;frame<120;frame++){if(signal?.aborted)throw new DOMException('Cancelled','AbortError');drawCard(ctx,settings,frame/120,photo);await source.add(frame/30,1/30);onProgress(Math.round((frame+1)/1.2));if(frame%10===0)await new Promise(r=>setTimeout(r,0));}await output.finalize();return new Blob([target.buffer],{type:'video/mp4'});}catch(e){await output.cancel().catch(()=>{});if(e.name==='AbortError')throw e;throw Error('This browser could not encode MP4. Use the animated GIF download.');}
 }
