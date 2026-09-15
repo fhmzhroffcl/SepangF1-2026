@@ -66,9 +66,9 @@ Built with React and Vite. Canvas rendering is shared by the live cards and down
 
 The public app deploys on Vercel from this repository's `main` branch. Build command: `npm run build`. Output directory: `dist`.
 
-Set **`OPENROUTER_API_KEY`** as a private Vercel environment variable, then redeploy. The server-side endpoint in `api/briefing.js` defaults to paid **`minimax/minimax-m3`**. Optionally set **`OPENROUTER_MODEL`** to override (for example a `:free` model). Never put the key in frontend code, a `VITE_` variable, screenshots or commits.
+Set **`OPENROUTER_API_KEY`** as a private Vercel environment variable, then redeploy. The server-side endpoint in `api/briefing.js` defaults to free **`google/gemma-4-31b-it:free`**. Optionally set **`OPENROUTER_MODEL`** to a paid override if you prefer. Never put the key in frontend code, a `VITE_` variable, screenshots or commits.
 
-> Note: OpenRouter’s temporary `minimax/minimax-m3:free` sponsorship ended in September 2026, so that model ID no longer has endpoints. Free (`:free`) models also require your OpenRouter [privacy settings](https://openrouter.ai/settings/privacy) to allow free-model publication; otherwise they return 404 with no endpoints.
+> **Free models require OpenRouter privacy settings:** at [openrouter.ai/settings/privacy](https://openrouter.ai/settings/privacy), allow free-model publication and keep **ZDR-only off**. Otherwise free endpoints return 404 (no providers) and the app shows a 503. OpenRouter’s temporary `minimax/minimax-m3:free` sponsorship ended in September 2026 — that ID is dead; do not use it.
 
 Vite alone does not run the Vercel API function. Use Vercel's development environment or a Vercel deployment to test AI responses. Without the secret or when the provider is unavailable, the app displays an error and retry control.
 

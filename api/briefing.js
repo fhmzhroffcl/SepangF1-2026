@@ -1,9 +1,9 @@
 const cache=new Map();
 const pending=new Map();
 const limits=new Map();
-// Paid MiniMax M3 — the :free sponsorship ended Sep 2026 and free models often
-// 404 when OpenRouter privacy/ZDR settings block free-provider publication.
-const MODEL=process.env.OPENROUTER_MODEL||'minimax/minimax-m3';
+// Free Gemma by default. Paid models are optional via OPENROUTER_MODEL.
+// Free endpoints 404 when OpenRouter privacy/ZDR settings block free-provider publication.
+const MODEL=process.env.OPENROUTER_MODEL||'google/gemma-4-31b-it:free';
 export default async function handler(req,res){
  res.setHeader('Content-Type','application/json');
  if(req.method!=='GET')return res.status(405).json({error:'Method not allowed'});
@@ -36,8 +36,8 @@ export default async function handler(req,res){
    let hint='AI briefing is temporarily unavailable. Use the official forecast below and try again later.';
    if(response.status===401||response.status===403)hint='OpenRouter rejected the API key. Check OPENROUTER_API_KEY on Vercel.';
    else if(response.status===402)hint='OpenRouter credit balance is empty. Add credits or switch OPENROUTER_MODEL to a :free model.';
-   else if(response.status===404&&/data policy|privacy/i.test(detail))hint='OpenRouter privacy settings block this model. Allow free-model publication at openrouter.ai/settings/privacy, or use a paid model.';
-   else if(response.status===404)hint='OpenRouter model has no endpoints. Set OPENROUTER_MODEL to a live model ID (for example minimax/minimax-m3).';
+   else if(response.status===404&&/data policy|privacy/i.test(detail))hint='OpenRouter privacy settings block this free model. Allow free-model publication at https://openrouter.ai/settings/privacy and turn ZDR-only off.';
+   else if(response.status===404)hint='OpenRouter model has no endpoints. Confirm OPENROUTER_MODEL is a live ID (default google/gemma-4-31b-it:free), or set a paid override.';
    else if(response.status===429)hint='OpenRouter rate limit reached. Wait a minute and retry.';
    return res.status(503).json({error:hint});
   }
